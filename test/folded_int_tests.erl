@@ -3,16 +3,19 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(TITLE(Type,N), list_to_binary(io_lib:format("~s ~.16#", [Type, N]))).
+
 -define(TEST_CASES, [
     %% Single byte encodings
     { 0,     <<0:1, 0:7>>     } ,
-    { 42,    <<0:1, 42:7>>    } ,
+    { 16#42, <<0:1, 16#42:7>> } ,
     { 16#7F, <<0:1, 16#7F:7>> } ,
 
     %% Two-byte encodings
     { 16#80,   <<1:1, 16#00:7, 0:1, 16#01:7>> },
     { 16#81,   <<1:1, 16#01:7, 0:1, 16#01:7>> },
     { 16#FF,   <<1:1, 16#7F:7, 0:1, 16#01:7>> },
+    { 16#100,  <<1:1, 16#00:7, 0:1, 16#02:7>> },
     { 16#3FFF, <<1:1, 16#7F:7, 0:1, 16#7F:7>> },
 
     %% Multi-byte encodings
@@ -28,7 +31,7 @@
   ]).
 
 encode_test_() ->
-  [?_assertEqual(Bits, folded_int:encode(N)) || {N, Bits} <- ?TEST_CASES].
+  [ {?TITLE("encode", N), ?_assertEqual(Bits, folded_int:encode(N))} || {N, Bits} <- ?TEST_CASES ].
 
 decode_test_() ->
-  [?_assertEqual(N, folded_int:decode(Bits)) || {N, Bits} <- ?TEST_CASES].
+  [ {?TITLE("decode", N), ?_assertEqual(N, folded_int:decode(Bits))} || {N, Bits} <- ?TEST_CASES ].
