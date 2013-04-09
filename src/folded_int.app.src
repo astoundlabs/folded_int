@@ -1,0 +1,12 @@
+{application, folded_int,
+ [
+  {description, "A library for encoding and decoding folded integers in binary data streams."},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, {folded_int, []}},
+  {env, []}
+ ]}.
