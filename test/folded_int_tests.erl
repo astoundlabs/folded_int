@@ -3,66 +3,32 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(TEST_CASES, [
+    %% Single byte encodings
+    { 0,     <<0:1, 0:7>>     } ,
+    { 42,    <<0:1, 42:7>>    } ,
+    { 16#7F, <<0:1, 16#7F:7>> } ,
 
-%%% ============================================================================
-%%% encode/1 tests
-%%% ============================================================================
+    %% Two-byte encodings
+    { 16#80,   <<1:1, 16#00:7, 0:1, 16#01:7>> },
+    { 16#81,   <<1:1, 16#01:7, 0:1, 16#01:7>> },
+    { 16#FF,   <<1:1, 16#7F:7, 0:1, 16#01:7>> },
+    { 16#3FFF, <<1:1, 16#7F:7, 0:1, 16#7F:7>> },
 
-encode_0_test()   -> ?assertEqual(<<0:1, 0:7>>,     folded_int:encode(0)).
-encode_42_test()  -> ?assertEqual(<<0:1, 42:7>>,    folded_int:encode(42)).
-encode_127_test() -> ?assertEqual(<<0:1, 16#7F:7>>, folded_int:encode(16#7F)).
+    %% Multi-byte encodings
+    { 16#4000, <<1:1, 16#00:7, 1:1, 16#00:7, 0:1, 16#01:7>> },
+    { 16#407F, <<1:1, 16#7F:7, 1:1, 16#00:7, 0:1, 16#01:7>> },
+    { 16#7F80, <<1:1, 16#00:7, 1:1, 16#7F:7, 0:1, 16#01:7>> },
 
-encode_128_test()   -> ?assertEqual(<<1:1, 16#00:7, 0:1, 16#01:7>>, folded_int:encode(16#80)).
-encode_129_test()   -> ?assertEqual(<<1:1, 16#01:7, 0:1, 16#01:7>>, folded_int:encode(16#81)).
-encode_255_test()   -> ?assertEqual(<<1:1, 16#7F:7, 0:1, 16#01:7>>, folded_int:encode(16#FF)).
-encode_16383_test() -> ?assertEqual(<<1:1, 16#7F:7, 0:1, 16#7F:7>>, folded_int:encode(16#3FFF)).
+    { 16#DEADBEEF, <<1:1, 16#6F:7, 1:1, 16#7D:7, 1:1, 16#36:7, 1:1, 16#75:7, 0:1, 16#0D:7>> },
 
-encode_16384_test() -> ?assertEqual(<<1:1, 16#00:7, 1:1, 16#00:7, 0:1, 16#01:7>>, folded_int:encode(16#4000)).
-encode_16511_test() -> ?assertEqual(<<1:1, 16#7F:7, 1:1, 16#00:7, 0:1, 16#01:7>>, folded_int:encode(16#407F)).
-encode_32640_test() -> ?assertEqual(<<1:1, 16#00:7, 1:1, 16#7F:7, 0:1, 16#01:7>>, folded_int:encode(16#7F80)).
+    %% uint64_t max
+    { 16#FFFFFFFFFFFFFFFF, <<1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7,
+                             1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 0:1, 16#01:7>> }
+  ]).
 
-encode_deadbeef_test() ->
-  ?assertEqual(
-    <<1:1, 16#6F:7, 1:1, 16#7D:7, 1:1, 16#36:7, 1:1, 16#75:7, 0:1, 16#0D:7>>,
-    folded_int:encode(16#DEADBEEF)
-  ).
+encode_test_() ->
+  [?_assertEqual(Bits, folded_int:encode(N)) || {N, Bits} <- ?TEST_CASES].
 
-encode_max_64bit_test() ->
-  ?assertEqual(
-    <<1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7,
-      1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 0:1, 16#01:7>>,
-    folded_int:encode(16#FFFFFFFFFFFFFFFF)
-).
-
-
-%%% ============================================================================
-%%% decode/1 tests
-%%% ============================================================================
-
-decode_0_test()   -> ?assertEqual(0,     folded_int:decode(<<0:1, 0:7>>)).
-decode_42_test()  -> ?assertEqual(42,    folded_int:decode(<<0:1, 42:7>>)).
-decode_127_test() -> ?assertEqual(16#7F, folded_int:decode(<<0:1, 16#7F:7>>)).
-
-decode_128_test()   -> ?assertEqual(folded_int:decode(<<1:1, 16#00:7, 0:1, 16#01:7>>), 16#80).
-decode_129_test()   -> ?assertEqual(folded_int:decode(<<1:1, 16#01:7, 0:1, 16#01:7>>), 16#81).
-decode_255_test()   -> ?assertEqual(folded_int:decode(<<1:1, 16#7F:7, 0:1, 16#01:7>>), 16#FF).
-decode_16383_test() -> ?assertEqual(folded_int:decode(<<1:1, 16#7F:7, 0:1, 16#7F:7>>), 16#3FFF).
-
-decode_16384_test() -> ?assertEqual(folded_int:decode(<<1:1, 16#00:7, 1:1, 16#00:7, 0:1, 16#01:7>>), 16#4000).
-decode_16511_test() -> ?assertEqual(folded_int:decode(<<1:1, 16#7F:7, 1:1, 16#00:7, 0:1, 16#01:7>>), 16#407F).
-decode_32640_test() -> ?assertEqual(folded_int:decode(<<1:1, 16#00:7, 1:1, 16#7F:7, 0:1, 16#01:7>>), 16#7F80).
-
-decode_deadbeef_test() ->
-  ?assertEqual(
-    folded_int:decode(<<1:1, 16#6F:7, 1:1, 16#7D:7, 1:1, 16#36:7, 1:1, 16#75:7, 0:1, 16#0D:7>>),
-    16#DEADBEEF
-  ).
-
-decode_max_64bit_test() ->
-  ?assertEqual(
-    folded_int:decode(
-      <<1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7,
-        1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 0:1, 16#01:7>>
-      ),
-    16#FFFFFFFFFFFFFFFF
-).
+decode_test_() ->
+  [?_assertEqual(N, folded_int:decode(Bits)) || {N, Bits} <- ?TEST_CASES].
