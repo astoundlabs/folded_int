@@ -30,8 +30,44 @@
                              1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 1:1, 16#7F:7, 0:1, 16#01:7>> }
   ]).
 
+consume_empty_test() ->
+  ?assertEqual(false, folded_int:consume(<<>>)).
+
+consume_exact_test_() ->
+  [ {?TITLE("consume exactly", N),
+      ?_assertEqual({N, <<>>}, folded_int:consume(Bits))}
+    || {N, Bits} <- ?TEST_CASES ].
+
+consume_underflow_test_() ->
+  [ {?TITLE("consume underflow", N),
+      ?_assertEqual(false, folded_int:consume(binary:part(Bits, 0, size(Bits) - 1)))}
+    || {N, Bits} <- ?TEST_CASES ].
+
+consume_overflow_test_() ->
+  [ {?TITLE("consume with overflow", N),
+      ?_assertMatch({N, _}, folded_int:consume(<<Bits/binary, 42>>))}
+    || {N, Bits} <- ?TEST_CASES ].
+
+consume_tail_test_() ->
+  [ {?TITLE("consume with tail", N),
+      ?_assertMatch({_, <<42>>}, folded_int:consume(<<Bits/binary, 42>>))}
+    || {N, Bits} <- ?TEST_CASES ].
+
 encode_test_() ->
-  [ {?TITLE("encode", N), ?_assertEqual(Bits, folded_int:encode(N))} || {N, Bits} <- ?TEST_CASES ].
+  [ {?TITLE("encode", N),
+      ?_assertEqual(Bits, folded_int:encode(N))}
+    || {N, Bits} <- ?TEST_CASES ].
 
 decode_test_() ->
-  [ {?TITLE("decode", N), ?_assertEqual(N, folded_int:decode(Bits))} || {N, Bits} <- ?TEST_CASES ].
+  [ {?TITLE("decode", N),
+      ?_assertEqual(N, folded_int:decode(Bits))}
+    || {N, Bits} <- ?TEST_CASES ].
+
+decode_empty_test() ->
+  ?assertError(function_clause, folded_int:decode(<<>>)).
+
+decode_underflow_test() ->
+  ?assertError(function_clause, folded_int:decode(<<1:1, 42:7>>)).
+
+decode_overflow_test() ->
+  ?assertError(function_clause, folded_int:decode(<<0:1, 42:7, 21>>)).
